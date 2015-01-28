@@ -317,7 +317,7 @@ match_proposer_address(struct evpaxos_config* config, struct sockaddr* addr)
 	int i;
 	for (i = 0; i < evpaxos_proposer_count(config); i++) {
 		struct sockaddr_in cmp = evpaxos_proposer_address(config, i);
-		if (evutil_sockaddr_cmp(addr, (struct sockaddr*)&cmp, 1) == 0)
+		if (evutil_sockaddr_cmp(addr, (struct sockaddr*)&cmp, 0) == 0)
 			return 1;
 	}
 	return 0;
