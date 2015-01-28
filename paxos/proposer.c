@@ -184,6 +184,13 @@ proposer_receive_promise(struct proposer* p, paxos_promise* ack,
 			inst->value_ballot = ack->value_ballot;
 			inst->promised_value = paxos_value_new(ack->value.paxos_value_val,
 				ack->value.paxos_value_len);
+			if (inst->value != NULL) {
+				if (paxos_value_cmp(inst->value, inst->promised_value) != 0)
+					carray_push_back(p->values, inst->value);
+				else
+					paxos_value_free(inst->value);
+				inst->value = NULL;
+			}
 			paxos_log_debug("Value in promise saved, removed older value");
 		} else
 			paxos_log_debug("Value in promise ignored");
@@ -212,9 +219,11 @@ proposer_accept(struct proposer* p, paxos_accept* out)
 		
 	paxos_log_debug("Trying to accept iid %u", inst->iid);
 	
-	// Is there a value to accept?
-	if (!instance_has_value(inst))
+	if (!instance_has_promised_value(inst)) {
+		assert(inst->value == NULL);
 		inst->value = carray_pop_front(p->values);
+	}
+	
 	if (!instance_has_value(inst) && !instance_has_promised_value(inst)) {
 		paxos_log_debug("Proposer: No value to accept");
 		return 0;
@@ -248,12 +257,14 @@ proposer_receive_accepted(struct proposer* p, paxos_accepted* ack, int from_id)
 		
 		if (quorum_reached(&inst->quorum)) {
 			paxos_log_debug("Proposer: Quorum reached for instance %u", inst->iid);
-			if (instance_has_promised_value(inst)) {
-				if (inst->value != NULL && paxos_value_cmp(inst->value, inst->promised_value) != 0) {
-					carray_push_back(p->values, inst->value);
-					inst->value = NULL;
-				}
-			}
+			if (instance_has_promised_value(inst))
+				assert(inst->value == NULL);
+			// if (instance_has_promised_value(inst)) {
+			// 	if (inst->value != NULL && paxos_value_cmp(inst->value, inst->promised_value) != 0) {
+			// 		carray_push_back(p->values, inst->value);
+			// 		inst->value = NULL;
+			// 	}
+			// }
 			kh_del_instance(p->accept_instances, k);
 			instance_free(inst);
 		}

@@ -42,6 +42,7 @@ struct evproposer
 	struct peers* peers;
 	struct timeval tv;
 	struct event* timeout_ev;
+	struct evpaxos_config* config;
 };
 
 
@@ -93,6 +94,7 @@ evproposer_handle_promise(struct peer* p, paxos_message* msg, void* arg)
 		peers_foreach_acceptor(proposer->peers, peer_send_prepare, &prepare);
 	try_accept(proposer);
 }
+
 
 static void
 evproposer_handle_accepted(struct peer* p, paxos_message* msg, void* arg)
@@ -173,6 +175,7 @@ evproposer_init_internal(int id, struct evpaxos_config* c, struct peers* peers)
 	p = malloc(sizeof(struct evproposer));
 	p->id = id;
 	p->preexec_window = paxos_config.proposer_preexec_window;
+	p->config = c;
 
 	peers_subscribe(peers, PAXOS_PROMISE, evproposer_handle_promise, p);
 	peers_subscribe(peers, PAXOS_ACCEPTED, evproposer_handle_accepted, p);
@@ -217,7 +220,6 @@ evproposer_init(int id, const char* config_file, struct event_base* base)
 	if (rv == 0)
 		return NULL;
 	struct evproposer* p = evproposer_init_internal(id, config, peers);
-	evpaxos_config_free(config);
 	return p;
 }
 
@@ -233,6 +235,7 @@ void
 evproposer_free(struct evproposer* p)
 {
 	peers_free(p->peers);
+	evpaxos_config_free(p->config);
 	evproposer_free_internal(p);
 }
 

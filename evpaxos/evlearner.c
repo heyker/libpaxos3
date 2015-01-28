@@ -42,6 +42,7 @@ struct evlearner
 	struct event* hole_timer;   /* Timer to check for holes */
 	struct timeval tv;          /* Check for holes every tv units of time */
 	struct peers* acceptors;    /* Connections to acceptors */
+	struct evpaxos_config* config;
 };
 
 
@@ -104,6 +105,7 @@ evlearner_init_internal(struct evpaxos_config* config, struct peers* peers,
 	learner->delarg = arg;
 	learner->state = learner_new(acceptor_count);
 	learner->acceptors = peers;
+	learner->config = config;
 	
 	peers_subscribe(peers, PAXOS_ACCEPTED, evlearner_handle_accepted, learner);
 	
@@ -126,8 +128,7 @@ evlearner_init(const char* config_file, deliver_function f, void* arg,
 	struct peers* peers = peers_new(b, c);
 	peers_connect_to_acceptors(peers);
 	struct evlearner* l = evlearner_init_internal(c, peers, f, arg);
-
-	evpaxos_config_free(c);
+	
 	return l;
 }
 
@@ -143,6 +144,7 @@ void
 evlearner_free(struct evlearner* l)
 {
 	peers_free(l->acceptors);
+	evpaxos_config_free(l->config);
 	evlearner_free_internal(l);
 }
 

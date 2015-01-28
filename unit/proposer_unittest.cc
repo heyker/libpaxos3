@@ -272,7 +272,7 @@ TEST_F(ProposerTest, AcceptPreempted) {
 	// make sure our value did not disappear...
 	proposer_prepare(p, &pr);
 	TestPrepareAckFromQuorum(pr.iid, pr.ballot);
-	proposer_accept(p, &ar);
+	ASSERT_EQ(1, proposer_accept(p, &ar));
 	CHECK_ACCEPT(ar, pr.iid, pr.ballot, value, value_size);
 }
 

@@ -40,6 +40,7 @@ struct peer
 {
 	int id;
 	int status;
+	int is_proposer;
 	struct bufferevent* bev;
 	struct event* reconnect_ev;
 	struct sockaddr_in addr;
@@ -173,9 +174,16 @@ peer_get_id(struct peer* p)
 	return p->id;
 }
 
-int peer_connected(struct peer* p)
+int
+peer_connected(struct peer* p)
 {
 	return p->status == BEV_EVENT_CONNECTED;
+}
+
+int
+peer_is_proposer(struct peer* p)
+{
+	return p->is_proposer;
 }
 
 int
@@ -303,6 +311,18 @@ on_listener_error(struct evconnlistener* l, void* arg)
 	event_base_loopexit(base, NULL);
 }
 
+static int
+match_proposer_address(struct evpaxos_config* config, struct sockaddr* addr)
+{
+	int i;
+	for (i = 0; i < evpaxos_proposer_count(config); i++) {
+		struct sockaddr_in cmp = evpaxos_proposer_address(config, i);
+		if (evutil_sockaddr_cmp(addr, (struct sockaddr*)&cmp, 1) == 0)
+			return 1;
+	}
+	return 0;
+}
+
 static void
 on_accept(struct evconnlistener *l, evutil_socket_t fd,
 	struct sockaddr* addr, int socklen, void *arg)
@@ -316,6 +336,7 @@ on_accept(struct evconnlistener *l, evutil_socket_t fd,
 		make_peer(peers, peers->clients_count, (struct sockaddr_in*)addr);
 	
 	peer = peers->clients[peers->clients_count];
+	
 	bufferevent_setfd(peer->bev, fd);
 	bufferevent_setcb(peer->bev, on_read, NULL, on_client_event, peer);
 	bufferevent_enable(peer->bev, EV_READ|EV_WRITE);
@@ -325,6 +346,7 @@ on_accept(struct evconnlistener *l, evutil_socket_t fd,
 		ntohs(((struct sockaddr_in*)addr)->sin_port));
 	
 	peers->clients_count++;
+	peer->is_proposer = match_proposer_address(peers->config, addr);
 }
 
 static void
@@ -347,6 +369,7 @@ make_peer(struct peers* peers, int id, struct sockaddr_in* addr)
 	p->peers = peers;
 	p->reconnect_ev = NULL;
 	p->status = BEV_EVENT_EOF;
+	p->is_proposer = 0;
 	return p;
 }
 

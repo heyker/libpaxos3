@@ -53,5 +53,6 @@ struct event_base* peers_get_event_base(struct peers* p);
 int peer_get_id(struct peer* p);
 struct bufferevent* peer_get_buffer(struct peer* p);
 int peer_connected(struct peer* p);
+int peer_is_proposer(struct peer* p);
 
 #endif
