@@ -255,11 +255,12 @@ instance_has_quorum(struct instance* inst, int acceptors)
 		// Count the ones "agreeing" with the last added
 		if (curr_ack->ballot == inst->last_update_ballot) {
 			count++;
-			a_valid_index = i;
+			if (curr_ack->value.paxos_value_len > 0)
+				a_valid_index = i;
 		}
 	}
 
-	if (count >= paxos_quorum(acceptors)) {
+	if (count >= paxos_quorum(acceptors) && a_valid_index != -1) {
 		paxos_log_debug("Reached quorum, iid: %u is closed!", inst->iid);
 		inst->final_value = inst->acks[a_valid_index];
 		return 1;
